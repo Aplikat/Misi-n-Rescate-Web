@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Misión: Rescate Web (Debug &amp; Grow)</title>
+<style>
+:root{
+  --bg:#0f172a;--card:#1e293b;--card2:#172033;--line:#334155;
+  --cyan:#38bdf8;--purple:#a855f7;--green:#22c55e;--amber:#f59e0b;--red:#f87171;
+  --text:#e2e8f0;--muted:#94a3b8;--code:#0b1220;--r:14px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+h1,h2,h3{line-height:1.25;margin:0 0 .5rem}
+h2{font-size:1.4rem}h3{font-size:1.05rem}
+p{margin:.45rem 0}
+button{font:inherit;color:inherit}
+.muted{color:var(--muted)}
+.small{font-size:.86rem}
+[hidden]{display:none!important}
+:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+
+/* ---------- HUD ---------- */
+header.hud{position:sticky;top:0;z-index:50;background:rgba(15,23,42,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.hud-in{max-width:1080px;margin:0 auto;padding:10px 16px 8px;display:flex;flex-wrap:wrap;gap:10px 20px;align-items:center;justify-content:space-between}
+.titles h1{font-size:1.15rem;margin:0}
+.titles h1 span{color:var(--cyan)}
+.titles p{margin:0;font-size:.82rem;color:var(--muted)}
+.hud-right{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.timer{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px 6px 4px 14px}
+.clock{font:700 1.55rem/1 Consolas,"SF Mono",monospace;font-variant-numeric:tabular-nums;letter-spacing:.04em;transition:color .4s}
+.clock.warn{color:var(--amber)}
+.clock.danger{color:var(--red)}
+.clock.paused{opacity:.55}
+.tbtn{background:#0f172a;border:1px solid var(--line);border-radius:9px;padding:5px 10px;font-size:.8rem;cursor:pointer;transition:.15s}
+.tbtn:hover:not(:disabled){border-color:var(--cyan);transform:translateY(-1px)}
+.tbtn:disabled{opacity:.4;cursor:not-allowed}
+.cards-chip{background:rgba(168,85,247,.14);border:1px solid rgba(168,85,247,.5);color:#e9d5ff;border-radius:999px;padding:6px 14px;font-weight:600;font-size:.9rem;white-space:nowrap}
+.cards-chip.bump{animation:bump .6s ease}
+@keyframes bump{0%{transform:scale(1)}40%{transform:scale(1.18);box-shadow:0 0 18px rgba(168,85,247,.6)}100%{transform:scale(1)}}
+.stepper{list-style:none;margin:0 auto;padding:0 16px 8px;max-width:1080px;display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.stepper button{width:100%;background:transparent;border:0;border-top:3px solid var(--line);padding:6px 4px 0;text-align:left;cursor:pointer;color:var(--muted);font-size:.82rem;transition:.25s}
+.stepper button:disabled{cursor:default}
+.stepper li.done button{border-top-color:var(--green);color:#bbf7d0}
+.stepper li.active button{border-top-color:var(--cyan);color:var(--cyan);font-weight:700}
+.stepper .t{display:block;font-size:.72rem;opacity:.8}
+@media(max-width:640px){.stepper{gap:6px;padding:0 10px 8px}.stepper .t{display:none}.stepper button{font-size:.7rem;line-height:1.25;padding:5px 2px 0}}
+.progress{height:3px;background:#0b1220}
+.progress i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--cyan),var(--purple));transition:width .6s ease}
+
+/* ---------- Layout ---------- */
+main{max-width:1080px;margin:0 auto;padding:22px 16px 70px}
+.screen{animation:fade .45s ease}
+@keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:20px;margin-bottom:18px}
+.kicker{display:inline-block;font-size:.76rem;letter-spacing:.08em;text-transform:uppercase;color:var(--cyan);font-weight:700}
+.badge{display:inline-block;background:rgba(56,189,248,.12);border:1px solid rgba(56,189,248,.4);color:var(--cyan);border-radius:999px;padding:1px 12px;font-size:.78rem;font-weight:600;margin-left:6px}
+.routine{border-color:rgba(168,85,247,.6);background:linear-gradient(135deg,rgba(168,85,247,.16),rgba(30,41,59,1) 60%)}
+.routine .kicker{color:#d8b4fe}
+.routine blockquote{margin:.6rem 0 0;padding:10px 14px;border-left:3px solid var(--purple);background:rgba(168,85,247,.1);border-radius:0 10px 10px 0;font-size:1.05rem}
+.routine cite{display:block;font-size:.8rem;color:var(--muted);margin-top:4px;font-style:normal}
+.roles{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:10px}
+.role{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:14px;cursor:pointer;transition:.2s}
+.role:hover,.role:focus-within{border-color:var(--cyan);transform:translateY(-2px)}
+.role.has{border-color:var(--green)}
+.role .ic{font-size:1.5rem}
+.role b{display:block}
+.role input{width:100%;margin-top:8px;padding:7px 10px;border-radius:9px;border:1px solid var(--line);background:#0f172a;color:var(--text);font:inherit;font-size:.92rem}
+.role input::placeholder{color:#64748b}
+.role input:focus{outline:2px solid var(--cyan);border-color:var(--cyan)}
+.btn{display:inline-block;background:var(--cyan);color:#06263a;border:0;border-radius:11px;padding:11px 22px;font-weight:700;cursor:pointer;transition:.18s}
+.btn:hover:not(:disabled){filter:brightness(1.1);transform:translateY(-2px);box-shadow:0 6px 18px rgba(56,189,248,.25)}
+.btn:active:not(:disabled){transform:translateY(0)}
+.btn:disabled{background:#334155;color:#94a3b8;cursor:not-allowed}
+.btn.green{background:var(--green);color:#052e16}
+.btn.ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
+.btn.ghost:hover:not(:disabled){border-color:var(--cyan);box-shadow:none}
+.btn.purple{background:rgba(168,85,247,.18);border:1px solid var(--purple);color:#f3e8ff}
+.btn.purple:disabled{background:#1e293b;border-color:var(--line);color:#64748b}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:12px}
+
+/* ---------- Código ---------- */
+.code{background:var(--code);border:1px solid var(--line);border-radius:12px;padding:12px 0;margin:10px 0;overflow-x:auto;font:14px/1.65 Consolas,"SF Mono",Menlo,monospace;counter-reset:ln}
+.code .l{display:block;padding:0 16px 0 0;white-space:pre;counter-increment:ln}
+.code .l::before{content:counter(ln);display:inline-block;width:2.6em;margin-right:14px;text-align:right;color:#475569;user-select:none}
+.code .l.warn{background:rgba(245,158,11,.14);box-shadow:inset 3px 0 0 var(--amber)}
+.code i{font-style:normal}
+.tg{color:#f472b6}.at{color:#fcd34d}.st{color:#86efac}.sl{color:#7dd3fc}.pr{color:#c4b5fd}.vl{color:#fda4af}.cm{color:#64748b}
+.codecap{font-size:.78rem;color:var(--muted);margin:10px 0 -4px;font-family:Consolas,monospace}
+
+/* ---------- Opciones / feedback ---------- */
+.opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin-top:10px}
+.opt{text-align:left;background:var(--card2);border:2px solid var(--line);border-radius:12px;padding:14px 16px;cursor:pointer;transition:.18s;display:block;color:var(--text)}
+.opt:hover:not(:disabled){border-color:var(--cyan);transform:translateY(-3px);box-shadow:0 8px 20px rgba(0,0,0,.3)}
+.opt:active:not(:disabled){transform:translateY(0)}
+.opt .letter{display:block;margin-bottom:4px;font-weight:800;color:var(--cyan);font-size:.8rem;letter-spacing:.08em}
+.opt code{font-family:Consolas,monospace;background:#0b1220;border-radius:5px;padding:0 5px;font-size:.88em}
+.opt.tried{border-color:var(--amber);background:rgba(245,158,11,.08)}
+.opt.right{border-color:var(--green);background:rgba(34,197,94,.12)}
+.opt:disabled:not(.right){opacity:.5;cursor:default}
+.alert{border-radius:12px;padding:14px 16px;margin-top:14px;border:1px solid;animation:fade .4s ease}
+.alert.warn{background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.6)}
+.alert.ok{background:rgba(34,197,94,.1);border-color:rgba(34,197,94,.6)}
+.alert.hint{background:rgba(168,85,247,.1);border-color:rgba(168,85,247,.6)}
+.alert.change{background:rgba(245,158,11,.14);border:2px solid var(--amber);animation:pulse 1.6s ease 2}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(245,158,11,0)}50%{box-shadow:0 0 22px 2px rgba(245,158,11,.4)}}
+.alert strong{display:block;margin-bottom:2px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.chips span{background:rgba(168,85,247,.18);border:1px solid rgba(168,85,247,.5);color:#f3e8ff;border-radius:999px;padding:2px 12px;font-size:.84rem;font-weight:600}
+.alert ol,.alert ul{margin:.4rem 0 0 1.2rem;padding:0}
+.alert li{margin:.2rem 0}
+.three{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;margin:8px 0}
+.three div{background:var(--card2);border:1px dashed #475569;border-radius:10px;padding:8px 12px;font-size:.88rem}
+.three b{color:#d8b4fe}
+
+/* ---------- Vista de celular ---------- */
+.phones{display:flex;flex-wrap:wrap;gap:22px;margin-top:10px}
+.pwrap{flex:0 0 auto}
+.pwrap .cap{font-size:.8rem;color:var(--muted);margin-bottom:6px}
+.phone{width:290px;border:3px solid #475569;border-radius:26px;padding:16px 12px;background:#0b1220;overflow:hidden;position:relative}
+.phone .bar{width:60px;height:5px;border-radius:9px;background:#334155;margin:-6px auto 12px}
+.pv-menu{display:flex;gap:8px}
+.pv-b{background:var(--cyan);color:#06263a;border-radius:9px;padding:12px;text-align:center;font-weight:700;font-size:.9rem}
+.pv-menu.bad .pv-b{flex:0 0 400px}
+.pv-menu.good{flex-wrap:wrap}
+.pv-menu.good .pv-b{flex:1 1 140px}
+.phone.over::after{content:"↔ se desborda";position:absolute;right:8px;bottom:6px;font-size:.72rem;color:var(--amber);background:#0b1220;padding:0 6px;border-radius:6px}
+
+/* ---------- Formularios ---------- */
+.field{margin:14px 0}
+.field>label{display:block;font-weight:600;margin-bottom:5px}
+select,textarea{width:100%;font:inherit;background:#0f172a;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+textarea{resize:vertical;min-height:90px}
+select:focus,textarea:focus{outline:2px solid var(--cyan);border-color:var(--cyan)}
+.invalid{border-color:var(--amber)!important;box-shadow:0 0 0 2px rgba(245,158,11,.25)}
+.sems{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+.sem{text-align:left;background:var(--card2);border:2px solid var(--line);border-radius:12px;padding:14px;cursor:pointer;transition:.18s}
+.sem:hover{transform:translateY(-3px)}
+.sem b{display:block;font-size:1.05rem}
+.sem.r.on{border-color:#ef4444;background:rgba(239,68,68,.14)}
+.sem.y.on{border-color:var(--amber);background:rgba(245,158,11,.14)}
+.sem.g.on{border-color:var(--green);background:rgba(34,197,94,.14)}
+.cert{border:2px solid var(--green);background:linear-gradient(160deg,rgba(34,197,94,.1),var(--card) 55%)}
+.cert dl{display:grid;grid-template-columns:minmax(120px,190px) 1fr;gap:8px 16px;margin:12px 0}
+.cert dt{color:var(--muted);font-size:.9rem}
+.cert dd{margin:0;white-space:pre-wrap}
+@media(max-width:560px){.cert dl{grid-template-columns:1fr}.cert dt{margin-top:6px}}
+.banner{max-width:1080px;margin:10px auto 0;padding:10px 16px;background:rgba(245,158,11,.14);border:1px solid var(--amber);border-radius:12px;color:#fde68a}
+</style>
+</head>
+<body>
+
+<header class="hud">
+  <div class="hud-in">
+    <div class="titles">
+      <h1>Misión: Rescate Web <span>(Debug &amp; Grow)</span></h1>
+      <p>Ludoevaluación Virtual – Diseño Web</p>
+    </div>
+    <div class="hud-right">
+      <div class="timer" role="timer" aria-label="Cuenta regresiva de la misión">
+        <span class="clock" id="clock">55:00</span>
+        <button class="tbtn" id="btnPause" type="button" disabled>⏸ Pausar</button>
+        <button class="tbtn" id="btnReset" type="button">↺ Reiniciar tiempo</button>
+      </div>
+      <div class="cards-chip" id="cardsChip" aria-live="polite">🃏 2 Cartas de Apoyo</div>
+    </div>
+  </div>
+  <ol class="stepper" id="stepper">
+    <li><button type="button" data-go="0"><span class="lbl-long">0. Briefing</span><span class="t">5 min</span></button></li>
+    <li><button type="button" data-go="1"><span class="lbl-long">1. Estación HTML</span><span class="t">15 min</span></button></li>
+    <li><button type="button" data-go="2"><span class="lbl-long">2. Estación CSS</span><span class="t">20 min</span></button></li>
+    <li><button type="button" data-go="3"><span class="lbl-long">3. Estación Aliados &amp; Cierre</span><span class="t">15 min</span></button></li>
+  </ol>
+  <div class="progress"><i id="bar"></i></div>
+  <div class="banner" id="timeUp" hidden role="status">⏰ Se cumplieron los 55 minutos. No se pierde nada: terminen lo que van y registren lo que aprendieron. Pueden usar «Reiniciar tiempo» si es una demostración.</div>
+</header>
+
+<main id="main" tabindex="-1">
+
+<!-- ======================= PANTALLA 0 ======================= -->
+<section class="screen" id="s0" data-screen="0">
+  <div class="card">
+    <span class="kicker">Briefing de misión</span>
+    <h2>Un estudio digital, una web cultural y una actualización que lo rompió todo</h2>
+    <p>Su equipo trabaja en un estudio digital emergente. Faltan <b>55 minutos</b> para lanzar el portal web de una iniciativa cultural y una actualización fallida rompió el código <b>HTML</b> y los estilos <b>CSS</b>. Deben diagnosticar, adaptar y aprender en el camino, como equipo.</p>
+  </div>
+
+  <div class="card routine">
+    <span class="kicker">Rutina pedagógica · Domínguez (2025)</span>
+    <h2>🪜 El Reto del Día y La Escalera del Esfuerzo</h2>
+    <blockquote>El reto no es terminar primero ni hacerlo perfecto a la primera, sino mantenernos curiosos, analizar cada fallo con intención y aprender en cada intento.
+      <cite>— Rutinas «El reto del día» y «La escalera del esfuerzo» (Domínguez, 2025)</cite></blockquote>
+    <p class="small muted" style="margin-top:10px">Cada peldaño es una estación. Equivocarse no resta puntos: es una pista.</p>
+  </div>
+
+  <div class="card">
+    <span class="kicker">Roles del equipo</span>
+    <h2>Asignen los roles de su sala virtual</h2>
+    <p class="muted small">Escriban un nombre o alias en cada rol (opcional, pero queda en su evidencia final).</p>
+    <div class="roles" id="roles">
+      <label class="role"><span class="ic">🔍</span><b>Inspector HTML</b><span class="muted small">Lee el código línea por línea y detecta etiquetas mal anidadas.</span><input type="text" maxlength="28" placeholder="Nombre o alias"></label>
+      <label class="role"><span class="ic">🏗️</span><b>Arquitecto CSS</b><span class="muted small">Propone y escribe las reglas de estilo.</span><input type="text" maxlength="28" placeholder="Nombre o alias"></label>
+      <label class="role"><span class="ic">👁️</span><b>Tester Visual</b><span class="muted small">Prueba cómo se ve en escritorio y celular.</span><input type="text" maxlength="28" placeholder="Nombre o alias"></label>
+      <label class="role"><span class="ic">🎤</span><b>Vocero</b><span class="muted small">Comunica al equipo y al docente lo que decidieron.</span><input type="text" maxlength="28" placeholder="Nombre o alias"></label>
+    </div>
+    <div class="row"><button class="btn" id="btnStart" type="button">Iniciar Misión y Activar Cronómetro (55:00) →</button></div>
+  </div>
+</section>
+
+<!-- ======================= PANTALLA 1 ======================= -->
+<section class="screen" id="s1" data-screen="1" hidden>
+  <div class="card">
+    <span class="kicker">Estación 1</span><span class="badge">⏱ 15 min sugeridos</span>
+    <h2>Diagnóstico de Estructura HTML</h2>
+    <p>La galería del festival se ve desordenada. Alguien cerró las etiquetas en el orden equivocado. Lean el código con calma:</p>
+    <div class="codecap">galeria.html</div>
+    <div class="code" id="code1"></div>
+  </div>
+
+  <div class="card">
+    <h3>🪜 Tres antes del «no puedo»</h3>
+    <p class="muted small">Si se bloquean, antes de llamar al docente completen estos tres pasos.</p>
+    <div class="three"><div><b>1.</b> Revisen el código línea por línea.</div><div><b>2.</b> Activen una Carta de Apoyo.</div><div><b>3.</b> Debátanlo con su equipo en sala.</div></div>
+    <div class="row"><button class="btn purple" id="help1" type="button">🃏 Usar Carta de Apoyo (Pista de Sintaxis)</button></div>
+    <div id="hintBox1" aria-live="polite"></div>
+  </div>
+
+  <div class="card">
+    <h3>¿Cómo lo arreglarían?</h3>
+    <div class="opts" id="opts1">
+      <button class="opt" type="button" data-key="a"><span class="letter">OPCIÓN A</span>Rehacer todo con tablas desde cero.</button>
+      <button class="opt" type="button" data-key="b" data-ok="1"><span class="letter">OPCIÓN B</span>Cerrar primero <code>&lt;/p&gt;</code>, luego <code>&lt;/div&gt;</code> y finalmente <code>&lt;/section&gt;</code>, respetando el anidamiento.</button>
+      <button class="opt" type="button" data-key="c"><span class="letter">OPCIÓN C</span>Cambiar la extensión a <code>.css</code> para que el navegador ignore los errores.</button>
+    </div>
+    <div id="fb1" aria-live="polite"></div>
+    <div class="row"><button class="btn" id="btnTo2" type="button" disabled>Avanzar a Estación 2 (CSS) →</button></div>
+  </div>
+</section>
+
+<!-- ======================= PANTALLA 2 ======================= -->
+<section class="screen" id="s2" data-screen="2" hidden>
+  <div class="alert change" id="change" style="margin-top:0;margin-bottom:18px">
+    <strong>⚡ CARTA DE CAMBIO DEL CLIENTE</strong>
+    El evento será visto desde celulares. Los botones tienen <code>width: 400px</code> fijo y se desbordan horizontalmente.
+    <div class="chips"><span>🌱 «Todavía no...» (Domínguez, 2025)</span></div>
+    <p class="small muted" style="margin-bottom:0">Todavía no está adaptado, pero ya sabemos qué ajustar. Reorganicen sus reglas de estilo bajo presión.</p>
+  </div>
+
+  <div class="card">
+    <span class="kicker">Estación 2</span><span class="badge">⏱ 20 min sugeridos</span>
+    <h2>Maquetación CSS y Giro Inesperado</h2>
+    <p>Este es el CSS actual del menú del evento. La línea marcada es la sospechosa:</p>
+    <div class="codecap">estilos.css</div>
+    <div class="code" id="code2"></div>
+    <div class="phones">
+      <div class="pwrap"><div class="cap">📱 Antes (celular)</div>
+        <div class="phone over"><div class="bar"></div><div class="pv-menu bad"><div class="pv-b">Inicio</div><div class="pv-b">Programa</div><div class="pv-b">Entradas</div></div></div></div>
+      <div class="pwrap" id="afterPhone" hidden><div class="cap">📱 Después (con su solución)</div>
+        <div class="phone"><div class="bar"></div><div class="pv-menu good"><div class="pv-b">Inicio</div><div class="pv-b">Programa</div><div class="pv-b">Entradas</div></div></div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>🪜 Tres antes del «no puedo»</h3>
+    <div class="row" style="margin-top:0"><button class="btn purple" id="help2" type="button">🃏 Usar Carta de Apoyo (Snippet Responsive)</button></div>
+    <div id="hintBox2" aria-live="polite"></div>
+  </div>
+
+  <div class="card">
+    <h3>¿Qué decisión toma el equipo?</h3>
+    <div class="opts" id="opts2">
+      <button class="opt" type="button" data-key="a"><span class="letter">OPCIÓN A</span>Ocultar dos botones en celular para que quepan.</button>
+      <button class="opt" type="button" data-key="b" data-ok="1"><span class="letter">OPCIÓN B</span>Agregar <code>flex-wrap: wrap;</code> al contenedor y cambiar el ancho fijo por <code>flex: 1 1 140px;</code>.</button>
+      <button class="opt" type="button" data-key="c"><span class="letter">OPCIÓN C</span>Subir el ancho a <code>800px</code> para que el botón sea más visible.</button>
+    </div>
+    <div id="fb2" aria-live="polite"></div>
+    <div class="row"><button class="btn" id="btnTo3" type="button" disabled>Ir a Estación 3: Aliados y Bitácora →</button></div>
+  </div>
+</section>
+
+<!-- ======================= PANTALLA 3 ======================= -->
+<section class="screen" id="s3" data-screen="3" hidden>
+  <div id="s3form">
+    <div class="card">
+      <span class="kicker">Estación 3</span><span class="badge">⏱ 15 min sugeridos</span>
+      <h2>Coevaluación entre Aliados · Diálogos de Desafío</h2>
+      <p>Revisen la solución del equipo aliado (por videollamada o chat) y escriban su retroalimentación usando uno de los conectores de Domínguez (2025).</p>
+      <div class="field"><label for="fConn">Conector del diálogo</label>
+        <select id="fConn">
+          <option value="">Elige un conector...</option>
+          <option>No lo habíamos resuelto así, nos gusta cómo...</option>
+          <option>Cuéntennos cómo llegaron a esa solución porque...</option>
+          <option>¿Y si intentan ajustar esta propiedad para que...?</option>
+        </select></div>
+      <div class="field"><label for="fSug">Sugerencia técnica para el equipo aliado</label>
+        <textarea id="fSug" placeholder="Ej. ...usan flex-wrap en el contenedor; ¿y si prueban un gap menor para que quepan mejor en pantallas pequeñas?"></textarea></div>
+    </div>
+
+    <div class="card">
+      <span class="kicker" style="color:#d8b4fe">Autoevaluación · Semáforo del Crecimiento</span>
+      <h2>¿Cómo se sienten con lo aprendido hoy?</h2>
+      <div class="sems" id="sems" role="radiogroup" aria-label="Semáforo del crecimiento">
+        <button type="button" class="sem r" data-v="rojo" role="radio" aria-checked="false"><b>🔴 Rojo</b>Estoy empezando a entender la lógica.</button>
+        <button type="button" class="sem y" data-v="amarillo" role="radio" aria-checked="false"><b>🟡 Amarillo</b>Estoy en proceso y ya logro corregir errores básicos.</button>
+        <button type="button" class="sem g" data-v="verde" role="radio" aria-checked="false"><b>🟢 Verde</b>Puedo explicarlo o ayudar a un compañero.</button>
+      </div>
+    </div>
+
+    <div class="card routine">
+      <span class="kicker">Rutina · Orgullo en proceso</span>
+      <h2>🏅 Un error que se volvió aprendizaje</h2>
+      <div class="field"><label for="fOrg">¿Qué error cometieron durante la misión y cómo lo transformaron en aprendizaje?</label>
+        <textarea id="fOrg" placeholder="Ej. Cerramos mal el <p> al inicio; ahora revisamos el anidamiento de adentro hacia afuera..."></textarea></div>
+    </div>
+
+    <div id="fErr" aria-live="polite"></div>
+    <div class="row"><button class="btn green" id="btnFinish" type="button">Finalizar Misión y Generar Reporte de Evidencia ✓</button></div>
+  </div>
+
+  <div class="card cert" id="cert" hidden>
+    <span class="kicker" style="color:#86efac">Certificado de Evidencia Formativa</span>
+    <h2>🎉 ¡Misión cumplida: el portal está rescatado!</h2>
+    <p class="muted">Aquí no hay notas punitivas: esta evidencia muestra el proceso de aprendizaje del equipo.</p>
+    <dl id="certBody"></dl>
+    <div class="row">
+      <button class="btn" id="btnCopy" type="button">📋 Copiar Evidencia</button>
+      <button class="btn ghost" id="btnAgain" type="button">↺ Nueva misión</button>
+      <span id="copyMsg" class="small" role="status" aria-live="polite"></span>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<script>
+'use strict';
+(function(){
+  var TOTAL=55*60;
+  var st={screen:0,max:0,started:false,running:false,remaining:TOTAL,cards:2,used:{1:false,2:false},
+          done:{1:false,2:false},awarded:false,tries:{1:0,2:0},sem:null,finished:false,elapsed:0,evidence:''};
+  var last=0,iv=null;
+  var $=function(s){return document.querySelector(s);};
+  var $$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s));};
+  function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  function fmt(sec){sec=Math.max(0,Math.ceil(sec));var m=Math.floor(sec/60),s=sec%60;return (m<10?'0':'')+m+':'+(s<10?'0':'')+s;}
+
+  /* ---------- Resaltado de sintaxis ---------- */
+  function hlHtml(src,warn){
+    return src.split('\n').map(function(line,i){
+      var s=esc(line);
+      s=s.replace(/(&lt;\/?)([a-zA-Z][a-zA-Z0-9]*)/g,'$1<i class="tg">$2</i>')
+         .replace(/ ([a-zA-Z-]+)=(&quot;[^&]*?&quot;)/g,' <i class="at">$1</i>=<i class="st">$2</i>');
+      return '<span class="l'+(warn&&warn.indexOf(i)>-1?' warn':'')+'">'+(s||' ')+'</span>';
+    }).join('');
+  }
+  function hlCss(src,warn){
+    return src.split('\n').map(function(line,i){
+      var s=esc(line);
+      if(/^\s*\/\*/.test(line)){s='<i class="cm">'+s+'</i>';}
+      else if(/\{\s*$/.test(line)){s=s.replace(/^(\s*)(.*?)(\s*\{)/,'$1<i class="sl">$2</i>$3');}
+      else if(/^\s*[a-z-]+\s*:/.test(line)){s=s.replace(/^(\s*)([a-z-]+)(\s*:\s*)([^;]*)(;?)/,'$1<i class="pr">$2</i>$3<i class="vl">$4</i>$5');}
+      return '<span class="l'+(warn&&warn.indexOf(i)>-1?' warn':'')+'">'+(s||' ')+'</span>';
+    }).join('');
+  }
+
+  var BROKEN_HTML=[
+    '<section class="galeria">',
+    '  <div class="tarjeta">',
+    '    <img src="mural.jpg" alt="Mural del festival">',
+    '    <p>Arte urbano en la plaza central.',
+    '  </section>',
+    '</div>',
+    '</p>'
+  ].join('\n');
+  var FIXED_HTML=[
+    '<section class="galeria">',
+    '  <div class="tarjeta">',
+    '    <img src="mural.jpg" alt="Mural del festival">',
+    '    <p>Arte urbano en la plaza central.</p>',
+    '  </div>',
+    '</section>'
+  ].join('\n');
+  var BROKEN_CSS=[
+    '.menu-botones {',
+    '  display: flex;',
+    '  gap: 12px;',
+    '}',
+    '',
+    '.boton {',
+    '  width: 400px;',
+    '  flex-shrink: 0;',
+    '  padding: 14px;',
+    '}'
+  ].join('\n');
+  var FIXED_CSS=[
+    '.menu-botones {',
+    '  display: flex;',
+    '  flex-wrap: wrap;',
+    '  gap: 12px;',
+    '}',
+    '',
+    '.boton {',
+    '  flex: 1 1 140px;',
+    '  padding: 14px;',
+    '}'
+  ].join('\n');
+
+  $('#code1').innerHTML=hlHtml(BROKEN_HTML);
+  $('#code2').innerHTML=hlCss(BROKEN_CSS,[6]);
+
+  /* ---------- Textos de retroalimentación ---------- */
+  var HINT={
+    1:'<div class="alert hint"><strong>🃏 Pista de sintaxis · Regla LIFO</strong>En HTML, <b>lo último que se abre es lo primero que se cierra</b> (como una pila de platos). Aquí se abrió <code>&lt;section&gt;</code>, luego <code>&lt;div&gt;</code> y al final <code>&lt;p&gt;</code>. Entonces el orden de cierre debe ser <code>&lt;/p&gt;</code>, <code>&lt;/div&gt;</code>, <code>&lt;/section&gt;</code>.</div>',
+    2:'<div class="alert hint"><strong>🃏 Snippet responsive</strong><div class="code" style="margin:8px 0">'+hlCss('.menu-botones {\n  display: flex;\n  flex-wrap: wrap;   /* deja que los botones bajen de línea */\n}\n.boton {\n  flex: 1 1 140px;   /* crece, se encoge y parte de 140px */\n}')+'</div>Con <code>flex-wrap: wrap</code> los elementos pasan a la siguiente línea cuando no caben, y con unidades flexibles (<code>flex</code>) se adaptan al espacio disponible en lugar de medir siempre 400px.</div>'
+  };
+  var CHIPS='<div class="chips"><span>🔁 Repite</span><span>🪞 Reflexiona</span><span>🎛️ Reajusta</span></div>';
+  var WRONG={
+    1:{
+      a:'Rehacer todo con tablas sería mucho trabajo y no arregla el problema real: el desorden viene del orden de cierre de las etiquetas, no de usar <code>&lt;div&gt;</code>. Revisen el orden de cierre de <code>&lt;p&gt;</code> y vuelvan a intentarlo.',
+      c:'Cambiar la extensión a <code>.css</code> no hace que el navegador ignore el HTML: el archivo seguiría teniendo etiquetas mal cerradas. Revisen el orden de cierre de <code>&lt;p&gt;</code> y vuelvan a intentarlo.'
+    },
+    2:{
+      a:'Ocultar botones esconde el problema, pero el cliente quiere que todos se vean. Piensen: ¿qué propiedad permite que los botones bajen a otra línea cuando no caben?',
+      c:'Subir a <code>800px</code> agrandaría el desborde en el celular. Piensen en un ancho que se adapte al espacio, no uno fijo.'
+    }
+  };
+  var RIGHT1='<div class="alert ok"><strong>✅ ¡Estructura rescatada!</strong>Respetaron el anidamiento: cada etiqueta se cierra antes que la que la contiene.<div class="code" style="margin:8px 0">'+hlHtml(FIXED_HTML)+'</div>'+
+    '<div class="alert hint" style="margin-top:12px"><strong>🕵️ Momento 1 de Retroalimentación Formativa · «Detective del Error»</strong>Antes de avanzar, discutan en su sala:<ol><li>¿Qué creían que pasaba en ese código?</li><li>¿Dónde estuvo la confusión?</li><li>¿Qué ajustarán cuando pasen a CSS?</li></ol></div></div>';
+  var RIGHT2='<div class="alert ok"><strong>✅ ¡El menú ahora se adapta al celular!</strong><code>flex-wrap: wrap</code> permite que los botones pasen a la línea siguiente cuando no caben, y <code>flex: 1 1 140px</code> hace que cada botón parta de 140px y crezca o se encoja según el espacio, en lugar de medir siempre 400px.<div class="code" style="margin:8px 0">'+hlCss(FIXED_CSS)+'</div>'+
+    '<div class="chips"><span>🃏 +1 Carta de Apoyo por resiliencia ante el cambio</span></div></div>';
+
+  /* ---------- Temporizador ---------- */
+  function paintTimer(){
+    var c=$('#clock');
+    c.textContent=fmt(st.remaining);
+    c.className='clock'+(st.remaining<=120?' danger':(st.remaining<600?' warn':''))+((st.started&&!st.running&&!st.finished)?' paused':'');
+    var p=$('#btnPause');
+    p.disabled=!st.started||st.finished||st.remaining<=0;
+    p.textContent=st.running?'⏸ Pausar':'▶ Reanudar';
+  }
+  function tick(){
+    if(!st.running)return;
+    var now=Date.now();
+    st.remaining=Math.max(0,st.remaining-(now-last)/1000);last=now;
+    if(st.remaining<=0){st.running=false;$('#timeUp').hidden=false;}
+    paintTimer();
+  }
+  function startTimer(){st.running=true;last=Date.now();if(!iv)iv=setInterval(tick,250);paintTimer();}
+  $('#btnPause').addEventListener('click',function(){
+    if(st.running){tick();st.running=false;}else if(st.started&&st.remaining>0){last=Date.now();st.running=true;}
+    paintTimer();
+  });
+  $('#btnReset').addEventListener('click',function(){
+    st.remaining=TOTAL;last=Date.now();$('#timeUp').hidden=true;
+    if(st.started&&!st.finished&&!st.running){/* queda en pausa si lo estaba */}
+    paintTimer();
+  });
+
+  /* ---------- HUD: cartas, stepper, navegación ---------- */
+  function paintCards(bump){
+    var n=st.cards,chip=$('#cardsChip');
+    chip.textContent='🃏 '+n+' '+(n===1?'Carta':'Cartas')+' de Apoyo';
+    if(bump){chip.classList.remove('bump');void chip.offsetWidth;chip.classList.add('bump');}
+    updateHelp(1);updateHelp(2);
+  }
+  function paintStepper(){
+    $$('#stepper li').forEach(function(li,i){
+      var b=li.querySelector('button');
+      li.classList.toggle('done',st.finished||i<st.screen||(i===1&&st.done[1]&&st.screen>1));
+      li.classList.toggle('active',!st.finished&&i===st.screen);
+      b.disabled=st.finished||i>st.max;
+      if(i===st.screen&&!st.finished)b.setAttribute('aria-current','step');else b.removeAttribute('aria-current');
+    });
+    var pct=st.finished?100:Math.max(4,st.screen/4*100+(st.screen>0?0:0));
+    $('#bar').style.width=pct+'%';
+  }
+  function go(n){
+    st.screen=n;if(n>st.max)st.max=n;
+    $$('.screen').forEach(function(s){s.hidden=(+s.dataset.screen!==n);});
+    paintStepper();
+    window.scrollTo({top:0,behavior:'smooth'});
+    var m=$('#main');if(m)m.focus({preventScroll:true});
+  }
+  $$('#stepper button').forEach(function(b){b.addEventListener('click',function(){if(!b.disabled)go(+b.dataset.go);});});
+
+  $('#btnStart').addEventListener('click',function(){
+    if(!st.started){st.started=true;startTimer();}
+    go(1);
+  });
+  $$('#roles .role').forEach(function(r){
+    var inp=r.querySelector('input');
+    inp.addEventListener('input',function(){r.classList.toggle('has',inp.value.trim().length>0);});
+  });
+
+  /* ---------- Cartas de Apoyo ---------- */
+  function updateHelp(n){
+    var b=$('#help'+n);if(!b)return;
+    if(st.used[n]){b.disabled=true;b.textContent='🃏 Carta usada';}
+    else if(st.cards<=0){b.disabled=true;b.textContent='🃏 Sin cartas: revisen línea por línea y debátanlo en sala';}
+    else{b.disabled=false;b.textContent=n===1?'🃏 Usar Carta de Apoyo (Pista de Sintaxis)':'🃏 Usar Carta de Apoyo (Snippet Responsive)';}
+  }
+  function useCard(n){
+    if(st.used[n]||st.cards<=0)return;
+    st.cards--;st.used[n]=true;
+    $('#hintBox'+n).innerHTML=HINT[n];
+    paintCards(true);
+  }
+  $('#help1').addEventListener('click',function(){useCard(1);});
+  $('#help2').addEventListener('click',function(){useCard(2);});
+
+  /* ---------- Estaciones 1 y 2: decisiones ---------- */
+  function setupOptions(n){
+    $$('#opts'+n+' .opt').forEach(function(o){
+      o.addEventListener('click',function(){
+        if(st.done[n])return;
+        st.tries[n]++;
+        var fb=$('#fb'+n);
+        if(o.dataset.ok){
+          st.done[n]=true;
+          $$('#opts'+n+' .opt').forEach(function(x){x.classList.remove('tried');if(x!==o)x.disabled=true;});
+          o.classList.add('right');
+          if(n===1){
+            fb.innerHTML=RIGHT1;
+          }else{
+            fb.innerHTML=RIGHT2;
+            $('#afterPhone').hidden=false;
+            if(!st.awarded){st.awarded=true;st.cards++;paintCards(true);}
+          }
+          var nb=$(n===1?'#btnTo2':'#btnTo3');nb.disabled=false;
+          paintStepper();
+        }else{
+          o.classList.add('tried');
+          fb.innerHTML='<div class="alert warn"><strong>Todavía no lo logran, pero es una buena pista 🌱</strong>'+WRONG[n][o.dataset.key]+CHIPS+'</div>';
+        }
+      });
+    });
+  }
+  setupOptions(1);setupOptions(2);
+  $('#btnTo2').addEventListener('click',function(){go(2);var c=$('#change');c.style.animation='none';void c.offsetWidth;c.style.animation='';});
+  $('#btnTo3').addEventListener('click',function(){go(3);});
+
+  /* ---------- Estación 3 ---------- */
+  var SEM_TXT={rojo:'🔴 Rojo — Estoy empezando a entender la lógica.',amarillo:'🟡 Amarillo — Estoy en proceso y ya logro corregir errores básicos.',verde:'🟢 Verde — Puedo explicarlo o ayudar a un compañero.'};
+  $$('#sems .sem').forEach(function(b){
+    b.addEventListener('click',function(){
+      st.sem=b.dataset.v;
+      $$('#sems .sem').forEach(function(x){var on=x===b;x.classList.toggle('on',on);x.setAttribute('aria-checked',on?'true':'false');});
+      $('#sems').classList.remove('invalid');
+    });
+  });
+  ['#fConn','#fSug','#fOrg'].forEach(function(id){
+    $(id).addEventListener('input',function(){$(id).classList.remove('invalid');});
+    $(id).addEventListener('change',function(){$(id).classList.remove('invalid');});
+  });
+
+  function rolesText(){
+    var names=['Inspector HTML','Arquitecto CSS','Tester Visual','Vocero'];
+    return $$('#roles .role input').map(function(inp,i){return names[i]+': '+(inp.value.trim()||'sin asignar');}).join('\n');
+  }
+  function buildEvidence(){
+    var lines=[];
+    lines.push('MISIÓN: RESCATE WEB (DEBUG & GROW) — EVIDENCIA FORMATIVA','');
+    lines.push('Tiempo empleado: '+fmt(st.elapsed)+' de 55:00','');
+    lines.push('Equipo:',rolesText(),'');
+    lines.push('Estaciones completadas: 1 HTML ✓ · 2 CSS ✓ · 3 Aliados & Cierre ✓');
+    lines.push('Cartas de Apoyo usadas: '+((st.used[1]?1:0)+(st.used[2]?1:0))+' · Cartas disponibles al cerrar: '+st.cards,'');
+    lines.push('Coevaluación (Diálogos de Desafío):',$('#fConn').value+' '+$('#fSug').value.trim(),'');
+    lines.push('Semáforo del Crecimiento: '+SEM_TXT[st.sem],'');
+    lines.push('Orgullo en proceso:',$('#fOrg').value.trim());
+    return lines.join('\n');
+  }
+  $('#btnFinish').addEventListener('click',function(){
+    var miss=[];
+    var conn=$('#fConn'),sug=$('#fSug'),org=$('#fOrg');
+    if(!conn.value){miss.push('elegir un conector');conn.classList.add('invalid');}
+    if(sug.value.trim().length<10){miss.push('escribir la sugerencia técnica para el equipo aliado');sug.classList.add('invalid');}
+    if(!st.sem){miss.push('marcar su Semáforo del Crecimiento');$('#sems').classList.add('invalid');}
+    if(org.value.trim().length<10){miss.push('contar su «Orgullo en proceso»');org.classList.add('invalid');}
+    var err=$('#fErr');
+    if(miss.length){
+      err.innerHTML='<div class="alert warn"><strong>Todavía no está todo listo 🌱</strong>Para cerrar la misión falta:<ul>'+miss.map(function(m){return '<li>'+m+'</li>';}).join('')+'</ul></div>';
+      return;
+    }
+    err.innerHTML='';
+    tick();st.running=false;st.finished=true;
+    st.elapsed=TOTAL-Math.ceil(st.remaining);
+    paintTimer();paintStepper();
+    st.evidence=buildEvidence();
+    var rows=[
+      ['Tiempo empleado',fmt(st.elapsed)+' de 55:00'],
+      ['Equipo',rolesText()],
+      ['Estaciones','1 HTML ✓ · 2 CSS ✓ · 3 Aliados & Cierre ✓'],
+      ['Cartas de Apoyo','Usadas: '+((st.used[1]?1:0)+(st.used[2]?1:0))+' · Disponibles al cerrar: '+st.cards],
+      ['Coevaluación (Diálogo de desafío)',conn.value+' '+sug.value.trim()],
+      ['Semáforo del Crecimiento',SEM_TXT[st.sem]],
+      ['Orgullo en proceso',org.value.trim()]
+    ];
+    $('#certBody').innerHTML=rows.map(function(r){return '<dt>'+esc(r[0])+'</dt><dd>'+esc(r[1])+'</dd>';}).join('');
+    $('#s3form').hidden=true;
+    $('#cert').hidden=false;
+    window.scrollTo({top:0,behavior:'smooth'});
+  });
+  $('#btnCopy').addEventListener('click',function(){
+    var msg=$('#copyMsg');
+    function ok(v){msg.textContent=v?'✓ Evidencia copiada. Pégala en el aula virtual.':'No pude copiar automáticamente: selecciona el texto del certificado y copia con Ctrl+C.';msg.style.color=v?'var(--green)':'var(--amber)';}
+    function fallback(){
+      var ta=document.createElement('textarea');ta.value=st.evidence;ta.style.position='fixed';ta.style.opacity='0';
+      document.body.appendChild(ta);ta.select();var r=false;try{r=document.execCommand('copy');}catch(e){}
+      document.body.removeChild(ta);ok(r);
+    }
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(st.evidence).then(function(){ok(true);},fallback);}
+    else fallback();
+  });
+  $('#btnAgain').addEventListener('click',function(){location.reload();});
+
+  /* ---------- Inicio ---------- */
+  paintTimer();paintCards(false);paintStepper();
+})();
+</script>
+</body>
+</html>
